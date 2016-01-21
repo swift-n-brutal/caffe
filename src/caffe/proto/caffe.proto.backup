@@ -307,8 +307,6 @@ message ParamSpec {
 // Update the next available ID when you add a new LayerParameter field.
 //
 // LayerParameter next available layer-specific ID: 140 (last added: batch_norm_param)
-// LayerParameter next available layer-specific ID: 141 (last added: illum_image_data_param)
-// LayerParameter next available layer-specific ID: 142 (last added: mvno_param)
 message LayerParameter {
   optional string name = 1; // the layer name
   optional string type = 2; // the layer type
@@ -371,7 +369,6 @@ message LayerParameter {
   optional HDF5DataParameter hdf5_data_param = 112;
   optional HDF5OutputParameter hdf5_output_param = 113;
   optional HingeLossParameter hinge_loss_param = 114;
-  optional IllumImageDataParameter illum_image_data_param = 140;
   optional ImageDataParameter image_data_param = 115;
   optional InfogainLossParameter infogain_loss_param = 116;
   optional InnerProductParameter inner_product_param = 117;
@@ -379,7 +376,6 @@ message LayerParameter {
   optional LRNParameter lrn_param = 118;
   optional MemoryDataParameter memory_data_param = 119;
   optional MVNParameter mvn_param = 120;
-  optional MVNOParameter mvno_param = 141;
   optional PoolingParameter pooling_param = 121;
   optional PowerParameter power_param = 122;
   optional PReLUParameter prelu_param = 131;
@@ -701,39 +697,6 @@ message HingeLossParameter {
   optional Norm norm = 1 [default = L1];
 }
 
-message IllumImageDataParameter {
-  // Specify the data source.
-  repeated string source = 1;
-  optional bool cache = 13 [default = false];
-  optional uint32 label_dim = 14;
-  optional uint32 patch_per_image = 11;
-  optional float black_thresh = 15 [default = 0];
-  // Specify the batch size.
-  optional uint32 batch_size = 4 [default = 1];
-  // The rand_skip variable is for the data layer to skip a few data points
-  // to avoid all asynchronous sgd clients to start at the same point. The skip
-  // point would be set as rand_skip * rand(0,1). Note that rand_skip should not
-  // be larger than the number of keys in the database.
-  optional uint32 rand_skip = 7 [default = 0];
-  // Whether or not ImageLayer should shuffle the list of files at every epoch.
-  optional bool shuffle = 8 [default = false];
-  // It will also resize images if new_height or new_width are not zero.
-  optional uint32 new_height = 9 [default = 0];
-  optional uint32 new_width = 10 [default = 0];
-  // DEPRECATED. See TransformationParameter. For data pre-processing, we can do
-  // simple scaling and subtracting the data mean, if provided. Note that the
-  // mean subtraction is always carried out before scaling.
-  optional float scale = 2 [default = 1];
-  repeated string mean_file = 3;
-  // DEPRECATED. See TransformationParameter. Specify if we would like to randomly
-  // crop an image.
-  optional uint32 crop_size = 5 [default = 0];
-  // DEPRECATED. See TransformationParameter. Specify if we want to randomly mirror
-  // data.
-  optional bool mirror = 6 [default = false];
-  optional string root_folder = 12 [default = ""];
-}
-
 message ImageDataParameter {
   // Specify the data source.
   optional string source = 1;
@@ -827,23 +790,6 @@ message MVNParameter {
 
   // Epsilon for not dividing by zero while normalizing variance
   optional float eps = 3 [default = 1e-9];
-}
-
-message MVNOParameter {
-  // This parameter can be set to false to normalize mean only
-  optional bool normalize_variance = 1 [default = true];
-  // This parameter can be set to false to normalize vector length
-  optional bool sub_mean = 4 [default = true];
-
-  // This parameter can be set to true to perform DNN-like MVN
-  optional bool across_channels = 2 [default = false];
-
-  // Epsilon for not dividing by zero while normalizing variance
-  optional float eps = 3 [default = 1e-9];
-  
-  // Output mean and/or variance or not
-  optional bool output_mean = 5 [default = false];
-  optional bool output_variance =  6 [default = false];
 }
 
 message PoolingParameter {
