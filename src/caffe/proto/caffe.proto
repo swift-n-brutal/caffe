@@ -309,6 +309,7 @@ message ParamSpec {
 // LayerParameter next available layer-specific ID: 140 (last added: batch_norm_param)
 // LayerParameter next available layer-specific ID: 141 (last added: illum_image_data_param)
 // LayerParameter next available layer-specific ID: 142 (last added: mvno_param)
+// LayerParameter next available layer-specific ID: 143 (last added: chnwise_param)
 message LayerParameter {
   optional string name = 1; // the layer name
   optional string type = 2; // the layer type
@@ -358,6 +359,7 @@ message LayerParameter {
   optional AccuracyParameter accuracy_param = 102;
   optional ArgMaxParameter argmax_param = 103;
   optional BatchNormParameter batch_norm_param = 139;
+  optional ChnwiseParameter chnwise_param = 142;
   optional ConcatParameter concat_param = 104;
   optional ContrastiveLossParameter contrastive_loss_param = 105;
   optional ConvolutionParameter convolution_param = 106;
@@ -499,6 +501,20 @@ message BatchNormParameter {
   // Small value to add to the variance estimate so that we don't divide by
   // zero.
   optional float eps = 3 [default = 1e-5];
+}
+
+message ChnwiseParameter {
+  enum ChnwiseOp {
+    PROD = 0;
+    SUM = 1;
+    MAX = 2;
+  }
+  optional ChnwiseOp operation = 1 [default = SUM]; // element-wise operation
+  repeated float coeff = 2; // blob-wise coefficient for SUM operation
+
+  // Whether to use an asymptotically slower (for >2 inputs) but stabler method
+  // of computing the gradient for the PROD operation. (No effect for SUM op.)
+  optional bool stable_prod_grad = 3 [default = true];
 }
 
 message ContrastiveLossParameter {
