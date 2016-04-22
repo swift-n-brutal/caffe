@@ -261,6 +261,70 @@ class BilinearFiller : public Filler<Dtype> {
   }
 };
 
+template <typename Dtype>
+class IdentFiller : public Filler<Dtype> {
+ public:
+  explicit IdentFiller(const FillerParameter& param)
+      : Filler<Dtype>(param) {}
+  virtual void Fill(Blob<Dtype>* blob) {
+    CHECK_EQ(blob->num_axes(), 4) << "Blob must be 4 dim.";
+    CHECK_EQ(blob->width(), blob->height()) << "Filler must be square";
+    Dtype* data = blob->mutable_cpu_data();
+    int half_w = floor(blob->width() / 2.);
+    int center_idx = half_w * blob->width() + half_w;
+    int hw = blob->height() * blob->width();
+    const int count = blob->count();
+    CHECK(count);
+    for (int i = 0; i < count; ++i) {
+      data[i] = 0.;
+    }
+    for (int i = center_idx; i < count; i += hw) {
+      data[i] = 1.;
+    }
+    CHECK_EQ(this->filler_param_.sparse(), -1)
+         << "Sparsity not supported by this Filler.";
+  }
+};
+
+template <typename Dtype>
+class BlurFiller : public Filler<Dtype> {
+ public:
+  explicit BlurFiller(const FillerParameter& param)
+      : Filler<Dtype>(param) {}
+  virtual void Fill(Blob<Dtype>* blob) {
+    Dtype* data = blob->mutable_cpu_data();
+    Dtype value = 1. / (blob->height() * blob->width());
+    const int count = blob->count();
+    CHECK(count);
+    for (int i = 0; i < count; ++i) {
+      data[i] = value;
+    }
+    CHECK_EQ(this->filler_param_.sparse(), -1)
+         << "Sparsity not supported by this Filler.";
+  }
+};
+
+
+template <typename Dtype>
+class DiagFiller : public Filler<Dtype> {
+ public:
+  explicit DiagFiller(const FillerParameter& param)
+      : Filler<Dtype>(param) {}
+  virtual void Fill(Blob<Dtype>* blob) {
+    CHECK_EQ(blob->num_axes(), 2) << "Blob must be 2 dim.";
+    CHECK_EQ(blob->num(), blob->channels()) << "Filler must be square";
+    Dtype* data = blob->mutable_cpu_data();
+    const int channels = blob->channels();
+    const int count = blob->count();
+    CHECK(count);
+    for (int i = 0; i < count; ++i) {
+      data[i] = (i / channels == i % channels) ? 1. : 0.;
+    }
+    CHECK_EQ(this->filler_param_.sparse(), -1)
+         << "Sparsity not supported by this Filler.";
+  }
+};
+
 /**
  * @brief Get a specific filler from the specification given in FillerParameter.
  *
@@ -284,6 +348,12 @@ Filler<Dtype>* GetFiller(const FillerParameter& param) {
     return new MSRAFiller<Dtype>(param);
   } else if (type == "bilinear") {
     return new BilinearFiller<Dtype>(param);
+  } else if (type == "ident") {
+    return new IdentFiller<Dtype>(param);
+  } else if (type == "blur") {
+    return new BlurFiller<Dtype>(param);
+  } else if (type == "diag") {
+    return new DiagFiller<Dtype>(param);
   } else {
     CHECK(false) << "Unknown filler name: " << param.type();
   }

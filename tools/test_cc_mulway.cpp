@@ -2,6 +2,7 @@
 #include <vector>
 
 #include "boost/algorithm/string.hpp"
+#include "boost/lexical_cast.hpp"
 #include "google/protobuf/text_format.h"
 
 #include "caffe/blob.hpp"
@@ -100,6 +101,9 @@ int test_cc(int argc, char** argv) {
   const int step = 10;
   int hwc[3];
   int height, width, channels = test_cc_net->input_blobs()[0]->channels();
+  int num_outputs = test_cc_net->num_outputs();
+  const vector<int>& output_blob_indices = test_cc_net->output_blob_indices();
+  const vector<string>& blob_names = test_cc_net->blob_names();
   int wh;
   int size = 0;
   float* im_buffer = NULL;
@@ -109,10 +113,14 @@ int test_cc(int argc, char** argv) {
   for (int i = 0; i < image_names.size(); ++i) {
     // read one image
     image_name = root_folder + image_names[i] + ".bin";
-    string result_name = result_dir + image_names[i] + ".lumap";
     LOG(ERROR) << "(" << i + 1 << "/" << image_names.size() << ")" << image_name;
     std::ifstream image_file(image_name.c_str(), std::ios::binary);
-    std::ofstream result_file(result_name.c_str());
+    vector<std::ofstream*> result_file(num_outputs);
+    for (int j = 0; j < num_outputs; ++j) {
+      //string result_name = result_dir + image_names[i] + "_" + boost::lexical_cast<std::string>(j) + ".lumap";
+      string result_name = result_dir + image_names[i] + "_" + blob_names[output_blob_indices[j]] + ".lumap";
+      result_file[j] = new std::ofstream(result_name.c_str());
+    }
     image_file.read((char*)hwc, sizeof(int)*3);
     height = hwc[0];
     width = hwc[1];
@@ -145,7 +153,9 @@ int test_cc(int argc, char** argv) {
     }
     int n_h_offs = h_offs.size();
     int n_w_offs = w_offs.size();
-    result_file << n_h_offs << " " << n_w_offs << " " << step << " " << crop_size << "\n";
+    for (int j = 0; j < num_outputs; ++j) {
+      (*result_file[j]) << n_h_offs << " " << n_w_offs << " " << step << " " << crop_size << "\n";
+    }
     int sample_id = 0;
     vector<std::pair<int, int> > pos;
     pos.resize(batch_size);
@@ -175,21 +185,37 @@ int test_cc(int argc, char** argv) {
                 cudaMemcpyHostToDevice));
           }
           const vector<Blob<float>*>& result = test_cc_net->ForwardPrefilled();
-          const int label_dim = result[0]->channels();
-          const float* pred = result[0]->cpu_data();
+          /*const int label_dim = result[0]->channels();
           if (label_dim == 3) {
-            for (int k = 0; k < batch_size; ++k) {
-              int kstart = k * label_dim;
-              result_file << pos[k].first << " " << pos[k].second
-                  << " " << pred[kstart] << " " << pred[kstart + 1]
-                  << " " << pred[kstart + 2] << "\n";
+            for (int j = 0; j < num_outputs; ++j) {
+              const float* pred = result[j]->cpu_data();
+              for (int k = 0; k < batch_size; ++k) {
+                int kstart = k * label_dim;
+                (*result_file[j]) << pos[k].first << " " << pos[k].second
+                    << " " << pred[kstart] << " " << pred[kstart + 1]
+                    << " " << pred[kstart + 2] << "\n";
+              }
             }
           } else if (label_dim == 2){
+            for (int j = 0; j < num_outputs; ++j) {
+              const float* pred = result[j]->cpu_data();
+              for (int k = 0; k < batch_size; ++k) {
+                int kstart = k * label_dim;
+                (*result_file[j]) << pos[k].first << " " << pos[k].second
+                    << " " << pred[kstart] * scale_r << " " << 1.0
+                    << " " << pred[kstart + 1] * scale_b << "\n";
+              }
+            }
+          }*/
+          for (int j = 0; j < num_outputs; ++j) {
+            const float* pred = result[j]->cpu_data();
+            const int label_dim = result[j]->channels();
             for (int k = 0; k < batch_size; ++k) {
-              int kstart = k * label_dim;
-              result_file << pos[k].first << " " << pos[k].second
-                  << " " << pred[kstart] * scale_r << " " << 1.0
-                  << " " << pred[kstart + 1] * scale_b << "\n";
+              (*result_file[j]) << pos[k].first << " " << pos[k].second;
+              for (int kstart = k*label_dim; kstart < k*label_dim + label_dim; ++kstart) {
+                (*result_file[j]) << " " << pred[kstart];
+              }
+              (*result_file[j]) << "\n";
             }
           }
           sample_id = 0;
@@ -204,25 +230,46 @@ int test_cc(int argc, char** argv) {
             cudaMemcpyHostToDevice));
       }
       const vector<Blob<float>*>& result = test_cc_net->ForwardPrefilled();
-      const int label_dim = result[0]->channels();
-      const float* pred = result[0]->cpu_data();
+      /*const int label_dim = result[0]->channels();
       if (label_dim == 3) {
-        for (int k = 0; k < sample_id; ++k) {
-          int kstart = k * label_dim;
-          result_file << pos[k].first << " " << pos[k].second
-              << " " << pred[kstart] << " " << pred[kstart + 1]
-              << " " << pred[kstart + 2] << "\n";
+        for (int j = 0; j < num_outputs; ++j) {
+          const float* pred = result[j]->cpu_data();
+          for (int k = 0; k < batch_size; ++k) {
+            int kstart = k * label_dim;
+            (*result_file[j]) << pos[k].first << " " << pos[k].second
+                << " " << pred[kstart] << " " << pred[kstart + 1]
+                << " " << pred[kstart + 2] << "\n";
+          }
         }
       } else if (label_dim == 2){
+        for (int j = 0; j < num_outputs; ++j) {
+          const float* pred = result[j]->cpu_data();
+          for (int k = 0; k < batch_size; ++k) {
+            int kstart = k * label_dim;
+            (*result_file[j]) << pos[k].first << " " << pos[k].second
+                << " " << pred[kstart] * scale_r << " " << 1.0
+                << " " << pred[kstart + 1] * scale_b << "\n";
+          }
+        }
+      }*/
+      for (int j = 0; j < num_outputs; ++j) {
+        const float* pred = result[j]->cpu_data();
+        const int label_dim = result[j]->channels();
         for (int k = 0; k < sample_id; ++k) {
-          int kstart = k * label_dim;
-          result_file << pos[k].first << " " << pos[k].second
-              << " " << pred[kstart] * scale_r << " " << 1.0
-              << " " << pred[kstart + 1] * scale_b << "\n";
+          (*result_file[j]) << pos[k].first << " " << pos[k].second;
+          for (int kstart = k*label_dim; kstart < k*label_dim + label_dim; ++kstart) {
+            (*result_file[j]) << " " << pred[kstart];
+          }
+          (*result_file[j]) << "\n";
         }
       }
     } // end process the remaining patches
-    result_file.close();
+//    result_file_0.close();
+//    result_file_1.close();
+    for (int j = 0; j < num_outputs; ++j) {
+      result_file[j]->close();
+      delete result_file[j];
+    }
   } // end predict the illuminants of all images
   if (size > 0) { delete im_buffer; }
   return 0;
