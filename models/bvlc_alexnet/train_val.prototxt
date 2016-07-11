@@ -371,8 +371,11 @@ layer {
   bottom: "fc8"
   bottom: "label"
   top: "accuracy"
-  include {
-    phase: TEST
+#  include {
+#    phase: TEST
+#  }
+  accuracy_param {
+    top_k: 2
   }
 }
 layer {
