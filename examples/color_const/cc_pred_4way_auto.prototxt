@@ -1,0 +1,460 @@
+name: "ColorConstancy"
+input: "data"
+input_dim: 128
+input_dim: 2
+input_dim: 44
+input_dim: 44
+layer {
+  name: "log_data"
+  type: "Log"
+  bottom: "data"
+  top: "log_data_0"
+  log_param {
+    shift: 1e-9
+  }
+}
+layer {
+  name: "copy_log_data"
+  type: "Split"
+  bottom: "log_data_0"
+  top: "log_data"
+  top: "log_data_brc"
+}
+layer {
+  name: "sub_mean"
+  type: "MVNO"
+  bottom: "log_data"
+  top: "sm_log_data"
+  top: "mean"
+  mvno_param {
+    normalize_variance:  false
+    sub_mean: true
+    output_mean: true
+  }
+}
+layer {
+  name: "conv1"
+  type: "Convolution"
+  bottom: "sm_log_data"
+  top: "conv1"
+  param {
+    lr_mult: 0
+  }
+  param {
+    lr_mult: 0
+  }
+  convolution_param {
+    num_output: 128
+	kernel_size: 8
+	stride: 4
+	weight_filler {
+	  type: "msra"
+	  variance_norm: FAN_IN
+	}
+  }
+}
+layer {
+  name: "reluc1"
+  type: "ReLU"
+  bottom: "conv1"
+  top: "conv1"
+}
+layer {
+  name: "conv2"
+  type: "Convolution"
+  bottom: "conv1"
+  top: "conv2"
+  param {
+    lr_mult: 0
+  }
+  param {
+    lr_mult: 0
+  }
+  convolution_param {
+    num_output: 256
+	kernel_size: 4
+	stride: 2
+	weight_filler {
+	  type: "msra"
+	  variance_norm: FAN_IN
+	}
+  }
+}
+layer {
+  name: "reluc2"
+  type: "ReLU"
+  bottom: "conv2"
+  top: "conv2"
+}
+################################### copy features
+layer {
+  name: "copy_feat"
+  type: "Split"
+  bottom: "conv2"
+  top: "conv2_0"
+  top: "conv2_1"
+  top: "conv2_2"
+  top: "conv2_3"
+}
+################################### branch 0
+layer {
+  name: "ip1_0"
+  type: "InnerProduct"
+  bottom: "conv2_0"
+  top: "ip1_0"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+  }
+  inner_product_param {
+    num_output: 256
+	weight_filler {
+	  type: "msra"
+	  variance_norm: FAN_IN
+	}
+  }
+}
+layer {
+  name: "relu1_0"
+  type: "ReLU"
+  bottom: "ip1_0"
+  top: "ip1_0"
+}
+layer {
+  name: "ip2_0"
+  type: "InnerProduct"
+  bottom: "ip1_0"
+  top: "ip2_0"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+  }
+  inner_product_param {
+    num_output: 2
+	weight_filler {
+	  type: "msra"
+	  variance_norm: FAN_IN
+	}
+  }
+}
+#################################### branch 1
+layer {
+  name: "ip1_1"
+  type: "InnerProduct"
+  bottom: "conv2_1"
+  top: "ip1_1"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+  }
+  inner_product_param {
+    num_output: 256
+        weight_filler {
+          type: "msra"
+          variance_norm: FAN_IN
+        }
+  }
+}
+layer {
+  name: "relu1_1"
+  type: "ReLU"
+  bottom: "ip1_1"
+  top: "ip1_1"
+}
+layer {
+  name: "ip2_1"
+  type: "InnerProduct"
+  bottom: "ip1_1"
+  top: "ip2_1"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+  }
+  inner_product_param {
+    num_output: 2
+        weight_filler {
+          type: "msra"
+          variance_norm: FAN_IN
+        }
+  }
+}
+#################################### branch 2
+layer {
+  name: "ip1_2"
+  type: "InnerProduct"
+  bottom: "conv2_2"
+  top: "ip1_2"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+  }
+  inner_product_param {
+    num_output: 256
+        weight_filler {
+          type: "msra"
+          variance_norm: FAN_IN
+        }
+  }
+}
+layer {
+  name: "relu1_2"
+  type: "ReLU"
+  bottom: "ip1_2"
+  top: "ip1_2"
+}
+layer {
+  name: "ip2_2"
+  type: "InnerProduct"
+  bottom: "ip1_2"
+  top: "ip2_2"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+  }
+  inner_product_param {
+    num_output: 2
+        weight_filler {
+          type: "msra"
+          variance_norm: FAN_IN
+        }
+  }
+}
+#################################### branch 3
+layer {
+  name: "ip1_3"
+  type: "InnerProduct"
+  bottom: "conv2_3"
+  top: "ip1_3"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+  }
+  inner_product_param {
+    num_output: 256
+        weight_filler {
+          type: "msra"
+          variance_norm: FAN_IN
+        }
+  }
+}
+layer {
+  name: "relu1_3"
+  type: "ReLU"
+  bottom: "ip1_3"
+  top: "ip1_3"
+}
+layer {
+  name: "ip2_3"
+  type: "InnerProduct"
+  bottom: "ip1_3"
+  top: "ip2_3"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+  }
+  inner_product_param {
+    num_output: 2
+        weight_filler {
+          type: "msra"
+          variance_norm: FAN_IN
+        }
+  }
+}
+################################### copy mean and label
+layer {
+  name: "copy_mean"
+  type: "Split"
+  bottom: "mean"
+  top: "mean_0"
+  top: "mean_1"
+  top: "mean_2"
+  top: "mean_3"
+}
+################################### branch 0
+layer {
+  name: "add_mean_0"
+  type: "Eltwise"
+  bottom: "ip2_0"
+  bottom: "mean_0"
+  top: "ip2_add_mean_0"
+}
+layer {
+  name: "exp_0"
+  type: "Exp"
+  bottom: "ip2_add_mean_0"
+  top: "rb_0"
+}
+################################## branch 1
+layer {
+  name: "add_mean_1"
+  type: "Eltwise"
+  bottom: "ip2_1"
+  bottom: "mean_1"
+  top: "ip2_add_mean_1"
+}  
+layer {
+  name: "exp_1"
+  type: "Exp"
+  bottom: "ip2_add_mean_1"
+  top: "rb_1"
+}
+################################### branch 2
+layer {
+  name: "add_mean_2"
+  type: "Eltwise"
+  bottom: "ip2_2"
+  bottom: "mean_2"
+  top: "ip2_add_mean_2"
+}
+layer {
+  name: "exp_2"
+  type: "Exp"
+  bottom: "ip2_add_mean_2"
+  top: "rb_2"
+}
+################################## branch 3
+layer {
+  name: "add_mean_3"
+  type: "Eltwise"
+  bottom: "ip2_3"
+  bottom: "mean_3"
+  top: "ip2_add_mean_3"
+}
+layer {
+  name: "exp_3"
+  type: "Exp"
+  bottom: "ip2_add_mean_3"
+  top: "rb_3"
+}
+
+################################## compute weights
+layer {
+  name: "brc_conv1"
+  type: "Convolution"
+  bottom: "log_data_brc"
+  top: "conv1_brc"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  convolution_param {
+    num_output: 128
+        kernel_size: 8
+        stride: 4
+        weight_filler {
+          type: "msra"
+          variance_norm: FAN_IN
+        }
+  }
+}
+layer {
+  name: "brc_reluc1"
+  type: "ReLU"
+  bottom: "conv1_brc"
+  top: "conv1_brc"
+}
+layer {
+  name: "brc_conv2"
+  type: "Convolution"
+  bottom: "conv1_brc"
+  top: "conv2_brc"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  convolution_param {
+    num_output: 256
+        kernel_size: 4
+        stride: 2
+        weight_filler {
+          type: "msra"
+          variance_norm: FAN_IN
+        }
+  }
+}
+layer {
+  name: "brc_reluc2"
+  type: "ReLU"
+  bottom: "conv2_brc"
+  top: "conv2_brc"
+}
+layer {
+  name: "brc_ip1"
+  type: "InnerProduct"
+  bottom: "conv2_brc"
+  top: "ip1_brc"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 256
+        weight_filler {
+          type: "msra"
+          variance_norm: FAN_IN
+        }
+  }
+}
+layer {
+  name: "brc_relu1"
+  type: "ReLU"
+  bottom: "ip1_brc"
+  top: "ip1_brc"
+}
+layer {
+  name: "brc_ip2"
+  type: "InnerProduct"
+  bottom: "ip1_brc"
+  top: "ip2_brc"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 4
+        weight_filler {
+          type: "msra"
+          variance_norm: FAN_IN
+        }
+  }
+}
+layer {
+  name: "softmax"
+  type: "Softmax"
+  bottom: "ip2_brc"
+  top: "brc"
+}

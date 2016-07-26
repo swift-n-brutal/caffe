@@ -1,0 +1,465 @@
+name: "ColorConstancy"
+layer {
+  name: "data_label"
+  type: "IllumImageData"
+  top: "data"
+  top: "label"
+  include {
+    phase: TRAIN
+  }
+  illum_image_data_param {
+    source: "/home/sw015/data/gs568/results/rb_og_rbg/fold_1.txt"
+    source: "/home/sw015/data/gs568/results/rb_og_rbg/fold_2.txt"
+	root_folder: "/home/sw015/data/gs568/results/rb_og_rbg/"
+	scale: 1
+	batch_size: 128
+	crop_size: 44
+	label_dim: 2
+	mirror: false
+	shuffle: true
+	patch_per_image: 8
+	cache: true
+  }
+}
+layer {
+  name: "data_label"
+  type: "IllumImageData"
+  top: "data"
+  top: "label"
+  include {
+    phase: TEST
+  }
+  illum_image_data_param {
+    source: "/home/sw015/data/gs568/results/rb_og_rbg/fold_0.txt"
+	root_folder: "/home/sw015/data/gs568/results/rb_og_rbg/"
+	scale: 1
+	batch_size: 128
+	crop_size: 44
+	label_dim: 2
+	mirror: false
+	shuffle: true
+	patch_per_image: 16
+	cache: true
+  }
+}
+layer {
+  name: "log_data"
+  type: "Log"
+  bottom: "data"
+  top: "log_data"
+  log_param {
+    shift: 1e-9
+  }
+}
+layer {
+  name: "log_label"
+  type: "Log"
+  bottom: "label"
+  top: "log_label"
+}
+layer {
+  name: "sub_mean"
+  type: "MVNO"
+  bottom: "log_data"
+  top: "sm_log_data"
+  top: "mean"
+  mvno_param {
+    normalize_variance:  false
+    sub_mean: true
+    output_mean: true
+  }
+}
+layer {
+  name: "conv1"
+  type: "Convolution"
+  bottom: "sm_log_data"
+  top: "conv1"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  convolution_param {
+    num_output: 128
+	kernel_size: 8
+	stride: 4
+	weight_filler {
+	  type: "msra"
+	  variance_norm: FAN_IN
+	}
+  }
+}
+layer {
+  name: "reluc1"
+  type: "ReLU"
+  bottom: "conv1"
+  top: "conv1"
+}
+layer {
+  name: "conv2"
+  type: "Convolution"
+  bottom: "conv1"
+  top: "conv2"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  convolution_param {
+    num_output: 256
+	kernel_size: 4
+	stride: 2
+	weight_filler {
+	  type: "msra"
+	  variance_norm: FAN_IN
+	}
+  }
+}
+layer {
+  name: "reluc2"
+  type: "ReLU"
+  bottom: "conv2"
+  top: "conv2"
+}
+################################### copy features
+layer {
+  name: "copy_feat"
+  type: "Split"
+  bottom: "conv2"
+  top: "conv2_0"
+  top: "conv2_1"
+  top: "conv2_2"
+  top: "conv2_3"
+}
+################################### branch 0
+layer {
+  name: "ip1_0"
+  type: "InnerProduct"
+  bottom: "conv2_0"
+  top: "ip1_0"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 256
+	weight_filler {
+	  type: "msra"
+	  variance_norm: FAN_IN
+	}
+  }
+}
+layer {
+  name: "relu1_0"
+  type: "ReLU"
+  bottom: "ip1_0"
+  top: "ip1_0"
+}
+layer {
+  name: "ip2_0"
+  type: "InnerProduct"
+  bottom: "ip1_0"
+  top: "ip2_0"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 2
+	weight_filler {
+	  type: "msra"
+	  variance_norm: FAN_IN
+	}
+  }
+}
+#################################### branch 1
+layer {
+  name: "ip1_1"
+  type: "InnerProduct"
+  bottom: "conv2_1"
+  top: "ip1_1"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 256
+        weight_filler {
+          type: "msra"
+          variance_norm: FAN_IN
+        }
+  }
+}
+layer {
+  name: "relu1_1"
+  type: "ReLU"
+  bottom: "ip1_1"
+  top: "ip1_1"
+}
+layer {
+  name: "ip2_1"
+  type: "InnerProduct"
+  bottom: "ip1_1"
+  top: "ip2_1"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 2
+        weight_filler {
+          type: "msra"
+          variance_norm: FAN_IN
+        }
+  }
+}
+#################################### branch 2
+layer {
+  name: "ip1_2"
+  type: "InnerProduct"
+  bottom: "conv2_2"
+  top: "ip1_2"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 256
+        weight_filler {
+          type: "msra"
+          variance_norm: FAN_IN
+        }
+  }
+}
+layer {
+  name: "relu1_2"
+  type: "ReLU"
+  bottom: "ip1_2"
+  top: "ip1_2"
+}
+layer {
+  name: "ip2_2"
+  type: "InnerProduct"
+  bottom: "ip1_2"
+  top: "ip2_2"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 2
+        weight_filler {
+          type: "msra"
+          variance_norm: FAN_IN
+        }
+  }
+}
+#################################### branch 3
+layer {
+  name: "ip1_3"
+  type: "InnerProduct"
+  bottom: "conv2_3"
+  top: "ip1_3"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 256
+        weight_filler {
+          type: "msra"
+          variance_norm: FAN_IN
+        }
+  }
+}
+layer {
+  name: "relu1_3"
+  type: "ReLU"
+  bottom: "ip1_3"
+  top: "ip1_3"
+}
+layer {
+  name: "ip2_3"
+  type: "InnerProduct"
+  bottom: "ip1_3"
+  top: "ip2_3"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 2
+        weight_filler {
+          type: "msra"
+          variance_norm: FAN_IN
+        }
+  }
+}
+################################### copy mean and label
+layer {
+  name: "copy_mean"
+  type: "Split"
+  bottom: "mean"
+  top: "mean_0"
+  top: "mean_1"
+  top: "mean_2"
+  top: "mean_3"
+}
+layer {
+  name: "copy_label"
+  type: "Split"
+  bottom: "log_label"
+  top: "log_label_0"
+  top: "log_label_1"
+}
+################################### branch 0
+layer {
+  name: "add_mean_0"
+  type: "Eltwise"
+  bottom: "ip2_0"
+  bottom: "mean_0"
+  top: "ip2_add_mean_0"
+}
+layer {
+  name: "euclid_dist_0"
+  type: "EuclideanDist"
+  bottom: "ip2_add_mean_0"
+  bottom: "log_label_0"
+  top: "l2_dist_0"
+}
+layer {
+  name: "negative_0"
+  type: "Power"
+  bottom: "l2_dist_0"
+  top: "neg_l2_dist_0"
+  power_param {
+    scale: -1
+  }
+}
+################################## branch 1
+layer {
+  name: "add_mean_1"
+  type: "Eltwise"
+  bottom: "ip2_1"
+  bottom: "mean_1"
+  top: "ip2_add_mean_1"
+}  
+layer {
+  name: "euclid_dist_1"
+  type: "EuclideanDist"
+  bottom: "ip2_add_mean_1"
+  bottom: "log_label_1"
+  top: "l2_dist_1"
+}
+layer {
+  name: "negative_1"
+  type: "Power"
+  bottom: "l2_dist_1"
+  top: "neg_l2_dist_1"
+  power_param {
+    scale: -1
+  }
+}
+################################### branch 2
+layer {
+  name: "add_mean_2"
+  type: "Eltwise"
+  bottom: "ip2_2"
+  bottom: "mean_2"
+  top: "ip2_add_mean_2"
+}
+layer {
+  name: "euclid_dist_2"
+  type: "EuclideanDist"
+  bottom: "ip2_add_mean_2"
+  bottom: "log_label_2"
+  top: "l2_dist_2"
+}
+layer {
+  name: "negative_2"
+  type: "Power"
+  bottom: "l2_dist_2"
+  top: "neg_l2_dist_2"
+  power_param {
+    scale: -1
+  }
+}
+################################## branch 3
+layer {
+  name: "add_mean_3"
+  type: "Eltwise"
+  bottom: "ip2_3"
+  bottom: "mean_3"
+  top: "ip2_add_mean_3"
+}
+layer {
+  name: "euclid_dist_3"
+  type: "EuclideanDist"
+  bottom: "ip2_add_mean_3"
+  bottom: "log_label_3"
+  top: "l2_dist_3"
+}
+layer {
+  name: "negative_3"
+  type: "Power"
+  bottom: "l2_dist_3"
+  top: "neg_l2_dist_3"
+  power_param {
+    scale: -1
+  }
+}
+################################## join in
+layer {
+  name: "min_branch"
+  type: "Eltwise"
+  bottom: "neg_l2_dist_0"
+  bottom: "neg_l2_dist_1"
+  bottom: "neg_l2_dist_2"
+  bottom: "neg_l2_dist_3"
+  top: "neg_min_l2_dist"
+  eltwise_param {
+    operation: MAX
+  }
+}
+layer {
+  name: "positive"
+  type: "Power"
+  bottom: "neg_min_l2_dist"
+  top: "min_l2_dist"
+  power_param {
+    scale: -1
+  }
+}
+layer {
+  name: "sum_loss"
+  type: "SumLoss"
+  bottom: "min_l2_dist"
+  top: "min_l2_loss"
+  loss_weight: 1
+}
