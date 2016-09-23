@@ -1,0 +1,191 @@
+name: "ColorConstancy"
+layer {
+  name: "data_label"
+  type: "IllumImageData"
+  top: "data"
+  top: "label"
+  include {
+    phase: TRAIN
+  }
+  illum_image_data_param {
+#    source: "/home/sw015/data/gs568/results/rb_og_rbg/fold_0.txt"
+#    source: "/home/sw015/data/gs568/results/rb_og_rbg/fold_2.txt"
+#	root_folder: "/home/sw015/data/gs568/results/rb_og_rbg/"
+    source: "/home/sw015/data/nus8c/results/rbog_rbg_nonsat/c1_fold_0.txt"
+    source: "/home/sw015/data/nus8c/results/rbog_rbg_nonsat/c1_fold_2.txt"
+    root_folder: "/home/sw015/data/nus8c/results/rbog_rbg_nonsat/"
+	scale: 1
+	batch_size: 128
+	crop_size: 44
+	label_dim: 2
+	mirror: false
+	shuffle: true
+	patch_per_image: 8
+	cache: true
+  }
+}
+layer {
+  name: "data_label"
+  type: "IllumImageData"
+  top: "data"
+  top: "label"
+  include {
+    phase: TEST
+  }
+  illum_image_data_param {
+#    source: "/home/sw015/data/gs568/results/rb_og_rbg/fold_1.txt"
+#	root_folder: "/home/sw015/data/gs568/results/rb_og_rbg/"
+    source: "/home/sw015/data/nus8c/results/rbog_rbg_nonsat/c1_fold_1.txt"
+    root_folder: "/home/sw015/data/nus8c/results/rbog_rbg_nonsat/"
+	scale: 1
+	batch_size: 128
+	crop_size: 44
+	label_dim: 2
+	mirror: false
+	shuffle: true
+	patch_per_image: 16
+	cache: true
+  }
+}
+layer {
+  name: "log_data"
+  type: "Log"
+  bottom: "data"
+  top: "log_data"
+  log_param {
+    shift: 1e-9
+  }
+}
+layer {
+  name: "log_label"
+  type: "Log"
+  bottom: "label"
+  top: "log_label"
+}
+layer {
+  name: "sub_mean"
+  type: "MVNO"
+  bottom: "log_data"
+  top: "sm_log_data"
+  top: "mean"
+  mvno_param {
+    normalize_variance:  false
+    sub_mean: true
+    output_mean: true
+  }
+}
+layer {
+  name: "conv1"
+  type: "Convolution"
+  bottom: "sm_log_data"
+  top: "conv1"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  convolution_param {
+    num_output: 128
+	kernel_size: 8
+	stride: 4
+	weight_filler {
+	  type: "msra"
+	  variance_norm: FAN_IN
+	}
+  }
+}
+layer {
+  name: "reluc1"
+  type: "ReLU"
+  bottom: "conv1"
+  top: "conv1"
+}
+layer {
+  name: "conv2"
+  type: "Convolution"
+  bottom: "conv1"
+  top: "conv2"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  convolution_param {
+    num_output: 256
+	kernel_size: 4
+	stride: 2
+	weight_filler {
+	  type: "msra"
+	  variance_norm: FAN_IN
+	}
+  }
+}
+layer {
+  name: "reluc2"
+  type: "ReLU"
+  bottom: "conv2"
+  top: "conv2"
+}
+layer {
+  name: "ip1"
+  type: "InnerProduct"
+  bottom: "conv2"
+  top: "ip1"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 256
+	weight_filler {
+	  type: "msra"
+	  variance_norm: FAN_IN
+	}
+  }
+}
+layer {
+  name: "relu1"
+  type: "ReLU"
+  bottom: "ip1"
+  top: "ip1"
+}
+layer {
+  name: "ip2"
+  type: "InnerProduct"
+  bottom: "ip1"
+  top: "ip2"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 2
+	weight_filler {
+	  type: "msra"
+	  variance_norm: FAN_IN
+	}
+  }
+}
+layer {
+  name: "add_mean"
+  type: "Eltwise"
+  bottom: "ip2"
+  bottom: "mean"
+  top: "ip2_add_mean"
+}
+layer {
+  name: "euclid_loss"
+  type: "EuclideanLoss"
+  bottom: "ip2_add_mean"
+  bottom: "log_label"
+  top: "l2_loss"
+  loss_weight: 1
+}

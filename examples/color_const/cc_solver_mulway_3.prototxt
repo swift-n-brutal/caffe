@@ -1,0 +1,27 @@
+# The train/test net protocol buffer definition
+net: "examples/color_const/cc_train_test_4way_0.prototxt"
+# test_iter specifies how many forward passes the test should carry out.
+# covering the full 10,000 testing images.
+test_iter: 23
+# Carry out testing every 500 training iterations.
+test_interval: 1000
+test_compute_loss: true
+# The base learning rate, momentum and the weight decay of the network.
+base_lr: 0.002
+momentum: 0.9
+weight_decay: 0.00000
+# The learning rate policy
+lr_policy: "fixed"
+# Display every 100 iterations
+display: 100
+#debug_info: true
+# The maximum number of iterations
+max_iter: 4000000
+# snapshot intermediate results
+snapshot: 10000
+#snapshot_prefix: "examples/color_const/cc_rbog_train-12_log_sub-patchmean_128x8+4_256x4+2_fc-256-2_lr-002_wc-000005"
+snapshot_prefix: "examples/color_const/cc_mulway_rbog_train-12_log_sub-patchmean_128x8+4_256x4+2_fc-256-256-2_lr-002_wc-00000"
+# solver mode: CPU or GPU
+solver_mode: GPU
+random_seed: 37
+device_id: 3

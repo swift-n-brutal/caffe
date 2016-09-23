@@ -306,7 +306,13 @@ message ParamSpec {
 // NOTE
 // Update the next available ID when you add a new LayerParameter field.
 //
+//<<<<<<< HEAD
+// LayerParameter next available layer-specific ID: 148 (last added: illum_image_data_param)
+// LayerParameter next available layer-specific ID: 149 (last added: mvno_param)
+// LayerParameter next available layer-specific ID: 150 (last added: chnwise_param)
+//=======
 // LayerParameter next available layer-specific ID: 147 (last added: recurrent_param)
+//>>>>>>> origin/master
 message LayerParameter {
   optional string name = 1; // the layer name
   optional string type = 2; // the layer type
@@ -361,7 +367,11 @@ message LayerParameter {
   optional AccuracyParameter accuracy_param = 102;
   optional ArgMaxParameter argmax_param = 103;
   optional BatchNormParameter batch_norm_param = 139;
+//<<<<<<< HEAD
+  optional ChnwiseParameter chnwise_param = 149;
+//=======
   optional BiasParameter bias_param = 141;
+//>>>>>>> origin/master
   optional ConcatParameter concat_param = 104;
   optional ContrastiveLossParameter contrastive_loss_param = 105;
   optional ConvolutionParameter convolution_param = 106;
@@ -377,6 +387,7 @@ message LayerParameter {
   optional HDF5DataParameter hdf5_data_param = 112;
   optional HDF5OutputParameter hdf5_output_param = 113;
   optional HingeLossParameter hinge_loss_param = 114;
+  optional IllumImageDataParameter illum_image_data_param = 147;
   optional ImageDataParameter image_data_param = 115;
   optional InfogainLossParameter infogain_loss_param = 116;
   optional InnerProductParameter inner_product_param = 117;
@@ -385,7 +396,11 @@ message LayerParameter {
   optional LRNParameter lrn_param = 118;
   optional MemoryDataParameter memory_data_param = 119;
   optional MVNParameter mvn_param = 120;
+//<<<<<<< HEAD
+  optional MVNOParameter mvno_param = 148;
+//=======
   optional ParameterParameter parameter_param = 145;
+//>>>>>>> origin/master
   optional PoolingParameter pooling_param = 121;
   optional PowerParameter power_param = 122;
   optional PReLUParameter prelu_param = 131;
@@ -426,6 +441,12 @@ message TransformationParameter {
   optional bool force_color = 6 [default = false];
   // Force the decoded image to have 1 color channels.
   optional bool force_gray = 7 [default = false];
+  // stdev_file and stdev_value cannot be specified at the same time
+  optional string stdev_file = 8;
+  repeated float stdev_value = 9;
+  // pad data with [pad] pad_value's
+  optional uint32 pad = 10 [default = 0];
+  optional float pad_value = 11 [default = 0.];
 }
 
 // Message that stores parameters shared by loss layers
@@ -509,6 +530,21 @@ message BatchNormParameter {
   optional float eps = 3 [default = 1e-5];
 }
 
+//<<<<<<< HEAD
+message ChnwiseParameter {
+  enum ChnwiseOp {
+    PROD = 0;
+    SUM = 1;
+    MAX = 2;
+  }
+  optional ChnwiseOp operation = 1 [default = SUM]; // element-wise operation
+  repeated float coeff = 2; // blob-wise coefficient for SUM operation
+
+  // Whether to use an asymptotically slower (for >2 inputs) but stabler method
+  // of computing the gradient for the PROD operation. (No effect for SUM op.)
+  optional bool stable_prod_grad = 3 [default = true];
+}
+//=======
 message BiasParameter {
   // The first axis of bottom[0] (the first input Blob) along which to apply
   // bottom[1] (the second input Blob).  May be negative to index from the end
@@ -539,6 +575,7 @@ message BiasParameter {
   // Default is the zero (0) initialization, resulting in the BiasLayer
   // initially performing the identity operation.
   optional FillerParameter filler = 3;
+//>>>>>>> origin/master
 }
 
 message ContrastiveLossParameter {
@@ -767,6 +804,39 @@ message HingeLossParameter {
   optional Norm norm = 1 [default = L1];
 }
 
+message IllumImageDataParameter {
+  // Specify the data source.
+  repeated string source = 1;
+  optional bool cache = 13 [default = false];
+  optional uint32 label_dim = 14;
+  optional uint32 patch_per_image = 11;
+  optional float black_thresh = 15 [default = 0];
+  // Specify the batch size.
+  optional uint32 batch_size = 4 [default = 1];
+  // The rand_skip variable is for the data layer to skip a few data points
+  // to avoid all asynchronous sgd clients to start at the same point. The skip
+  // point would be set as rand_skip * rand(0,1). Note that rand_skip should not
+  // be larger than the number of keys in the database.
+  optional uint32 rand_skip = 7 [default = 0];
+  // Whether or not ImageLayer should shuffle the list of files at every epoch.
+  optional bool shuffle = 8 [default = false];
+  // It will also resize images if new_height or new_width are not zero.
+  optional uint32 new_height = 9 [default = 0];
+  optional uint32 new_width = 10 [default = 0];
+  // DEPRECATED. See TransformationParameter. For data pre-processing, we can do
+  // simple scaling and subtracting the data mean, if provided. Note that the
+  // mean subtraction is always carried out before scaling.
+  optional float scale = 2 [default = 1];
+  repeated string mean_file = 3;
+  // DEPRECATED. See TransformationParameter. Specify if we would like to randomly
+  // crop an image.
+  optional uint32 crop_size = 5 [default = 0];
+  // DEPRECATED. See TransformationParameter. Specify if we want to randomly mirror
+  // data.
+  optional bool mirror = 6 [default = false];
+  optional string root_folder = 12 [default = ""];
+}
+
 message ImageDataParameter {
   // Specify the data source.
   optional string source = 1;
@@ -875,8 +945,27 @@ message MVNParameter {
   optional float eps = 3 [default = 1e-9];
 }
 
+//<<<<<<< HEAD
+message MVNOParameter {
+  // This parameter can be set to false to normalize mean only
+  optional bool normalize_variance = 1 [default = true];
+  // This parameter can be set to false to normalize vector length
+  optional bool sub_mean = 4 [default = true];
+
+  // This parameter can be set to true to perform DNN-like MVN
+  optional bool across_channels = 2 [default = false];
+
+  // Epsilon for not dividing by zero while normalizing variance
+  optional float eps = 3 [default = 1e-9];
+  
+  // Output mean and/or variance or not
+  optional bool output_mean = 5 [default = false];
+  optional bool output_variance =  6 [default = false];
+}
+//=======
 message ParameterParameter {
   optional BlobShape shape = 1;
+//>>>>>>> origin/master
 }
 
 message PoolingParameter {
@@ -1092,6 +1181,7 @@ message ScaleParameter {
   // may be more efficient).  Initialized with bias_filler (defaults to 0).
   optional bool bias_term = 4 [default = false];
   optional FillerParameter bias_filler = 5;
+  optional bool scale_term = 6 [default = true];
 }
 
 message SigmoidParameter {

@@ -40,6 +40,18 @@ void EltwiseLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
   case EltwiseParameter_EltwiseOp_PROD:
     caffe_gpu_mul(count, bottom[0]->gpu_data(), bottom[1]->gpu_data(),
         top_data);
+#ifndef DEBUG_ELTWISE_SELF
+{
+    const Dtype* ptr0 = bottom[0]->cpu_data();
+    const Dtype* ptr1 = bottom[1]->cpu_data();
+    const int dm = count / bottom[0]->num();
+    LOG(INFO) << "dim = " << dm;
+    for (int i = 0; i < 5; ++i) {
+      LOG(INFO) << i << ": (" << ptr0[i*dm] << ", " << ptr0[i*dm+1] << ") * ("
+          << ptr1[i*dm] << ", " << ptr1[i*dm+1] << ")";
+    }
+}
+#endif
     for (int i = 2; i < bottom.size(); ++i) {
       caffe_gpu_mul(count, top_data, bottom[i]->gpu_data(), top_data);
     }

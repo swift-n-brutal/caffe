@@ -36,6 +36,26 @@ DataTransformer<Dtype>::DataTransformer(const TransformationParameter& param,
       mean_values_.push_back(param_.mean_value(c));
     }
   }
+  // check if we want to use stdev_file
+  if (param_.has_stdev_file()) {
+    CHECK_EQ(param_.stdev_value_size(), 0) <<
+      "Cannot specify stdev_file and stdev_value at the same time";
+    const string& stdev_file = param.stdev_file();
+    if (Caffe::root_solver()) {
+      LOG(INFO) << "Loading stdev file from: " << stdev_file;
+    }
+    BlobProto blob_proto_1;
+    ReadProtoFromBinaryFileOrDie(stdev_file.c_str(), &blob_proto_1);
+    data_stdev_.FromProto(blob_proto_1);
+  }
+  // check if we want tot use GPU 1 does not have p2p access to GPU 0
+  if (param_.stdev_value_size() > 0) {
+    CHECK(param_.has_stdev_file() == false) <<
+      "Cannot specify stdev_file and stdev_value at the same time";
+    for (int c = 0; c < param_.stdev_value_size(); ++c) {
+      stdev_values_.push_back(param_.stdev_value(c));
+    }
+  }
 }
 
 template<typename Dtype>
@@ -52,6 +72,10 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
   const bool has_mean_file = param_.has_mean_file();
   const bool has_uint8 = data.size() > 0;
   const bool has_mean_values = mean_values_.size() > 0;
+  const bool has_stdev_file = param_.has_stdev_file();
+  const bool has_stdev_values = stdev_values_.size() > 0;
+  const int pad = param_.pad();
+  const Dtype pad_value = param_.pad_value();
 
   CHECK_GT(datum_channels, 0);
   CHECK_GE(datum_height, crop_size);
@@ -74,6 +98,24 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
       }
     }
   }
+  Dtype* stdev = NULL;
+  if (has_stdev_file) {
+    CHECK_EQ(datum_channels, data_stdev_.channels());
+    CHECK_EQ(datum_height, data_stdev_.height());
+    CHECK_EQ(datum_width, data_stdev_.width());
+    stdev = data_stdev_.mutable_cpu_data();
+  }
+  if (has_stdev_values) {
+    CHECK(stdev_values_.size() == 1 || stdev_values_.size() == datum_channels) <<
+     "Specify either 1 stdev_value or as many as channels: " << datum_channels;
+    if (datum_channels > 1 && stdev_values_.size() == 1) {
+      // Replicate the stdev_value for simplicity
+      for (int c = 1; c < datum_channels; ++c) {
+        stdev_values_.push_back(stdev_values_[0]);
+      }
+    }
+  }
+
 
   int height = datum_height;
   int width = datum_width;
@@ -85,8 +127,10 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
     width = crop_size;
     // We only do random crop when we do training.
     if (phase_ == TRAIN) {
-      h_off = Rand(datum_height - crop_size + 1);
-      w_off = Rand(datum_width - crop_size + 1);
+      //h_off = Rand(datum_height - crop_size + 1);
+      //w_off = Rand(datum_width - crop_size + 1);
+      h_off = Rand(datum_height + pad*2 - crop_size + 1) - pad;
+      w_off = Rand(datum_width + pad*2 - crop_size + 1) - pad;
     } else {
       h_off = (datum_height - crop_size) / 2;
       w_off = (datum_width - crop_size) / 2;
@@ -98,12 +142,17 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
   for (int c = 0; c < datum_channels; ++c) {
     for (int h = 0; h < height; ++h) {
       for (int w = 0; w < width; ++w) {
-        data_index = (c * datum_height + h_off + h) * datum_width + w_off + w;
         if (do_mirror) {
           top_index = (c * height + h) * width + (width - 1 - w);
         } else {
           top_index = (c * height + h) * width + w;
         }
+        if (h_off + h < 0 || h_off + h >= datum_height ||
+            w_off + w < 0 || w_off + w >= datum_width) {
+          transformed_data[top_index] = pad_value;
+          continue;
+        }
+        data_index = (c * datum_height + h_off + h) * datum_width + w_off + w;
         if (has_uint8) {
           datum_element =
             static_cast<Dtype>(static_cast<uint8_t>(data[data_index]));
@@ -120,6 +169,11 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
           } else {
             transformed_data[top_index] = datum_element * scale;
           }
+        }
+        if (has_stdev_file) {
+          transformed_data[top_index] /= stdev[data_index];
+        } else if (has_stdev_values) {
+          transformed_data[top_index] /= stdev_values_[c];
         }
       }
     }
@@ -247,6 +301,11 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
   const bool do_mirror = param_.mirror() && Rand(2);
   const bool has_mean_file = param_.has_mean_file();
   const bool has_mean_values = mean_values_.size() > 0;
+  const bool has_stdev_file = param_.has_stdev_file();
+  const bool has_stdev_values = stdev_values_.size() > 0;
+  const int pad = param_.pad();
+  //const Dtype pad_value = param_.pad_value();
+  CHECK_EQ(pad, 0) << "Pad is not supported for opencv";
 
   CHECK_GT(img_channels, 0);
   CHECK_GE(img_height, crop_size);
@@ -266,6 +325,23 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
       // Replicate the mean_value for simplicity
       for (int c = 1; c < img_channels; ++c) {
         mean_values_.push_back(mean_values_[0]);
+      }
+    }
+  }
+  Dtype* stdev = NULL;
+  if (has_stdev_file) {
+    CHECK_EQ(img_channels, data_stdev_.channels());
+    CHECK_EQ(img_height, data_stdev_.height());
+    CHECK_EQ(img_width, data_stdev_.width());
+    stdev = data_stdev_.mutable_cpu_data();
+  }
+  if (has_stdev_values) {
+    CHECK(stdev_values_.size() == 1 || stdev_values_.size() == img_channels) <<
+     "Specify either 1 stdev_value or as many as channels: " << img_channels;
+    if (img_channels > 1 && stdev_values_.size() == 1) {
+      // Replicate the stdev_value for simplicity
+      for (int c = 1; c < img_channels; ++c) {
+        stdev_values_.push_back(stdev_values_[0]);
       }
     }
   }
@@ -319,6 +395,12 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
             transformed_data[top_index] = pixel * scale;
           }
         }
+        if (has_stdev_file) {
+          int stdev_index = (c * img_height + h_off + h) * img_width + w_off + w;
+          transformed_data[top_index] /= stdev[stdev_index];
+        } else if (has_stdev_values) {
+          transformed_data[top_index] /= stdev_values_[c];
+        }
       }
     }
   }
@@ -361,6 +443,10 @@ void DataTransformer<Dtype>::Transform(Blob<Dtype>* input_blob,
   const bool do_mirror = param_.mirror() && Rand(2);
   const bool has_mean_file = param_.has_mean_file();
   const bool has_mean_values = mean_values_.size() > 0;
+  const bool has_stdev_file = param_.has_stdev_file();
+  const bool has_stdev_values = stdev_values_.size() > 0;
+  const int pad = param_.pad();
+  const Dtype pad_value = param_.pad_value();
 
   int h_off = 0;
   int w_off = 0;
@@ -368,9 +454,11 @@ void DataTransformer<Dtype>::Transform(Blob<Dtype>* input_blob,
     CHECK_EQ(crop_size, height);
     CHECK_EQ(crop_size, width);
     // We only do random crop when we do training.
-    if (phase_ == TRAIN) {
-      h_off = Rand(input_height - crop_size + 1);
-      w_off = Rand(input_width - crop_size + 1);
+    if (phase_ == TRAIN) { 
+      //h_off = Rand(input_height - crop_size + 1);
+      //w_off = Rand(input_width - crop_size + 1);
+      h_off = Rand(input_height + pad*2 - crop_size + 1) - pad;
+      w_off = Rand(input_width + pad*2 - crop_size + 1) - pad;
     } else {
       h_off = (input_height - crop_size) / 2;
       w_off = (input_width - crop_size) / 2;
@@ -408,6 +496,33 @@ void DataTransformer<Dtype>::Transform(Blob<Dtype>* input_blob,
     }
   }
 
+  if (has_stdev_file) {
+    CHECK_EQ(input_channels, data_stdev_.channels());
+    CHECK_EQ(input_height, data_stdev_.height());
+    CHECK_EQ(input_width, data_stdev_.width());
+    for (int n = 0; n < input_num; ++n) {
+      int offset = input_blob->offset(n);
+      caffe_div(data_stdev_.count(), input_data + offset,
+            data_stdev_.cpu_data(), input_data + offset);
+    }
+  }
+
+  if (has_stdev_values) {
+    CHECK(stdev_values_.size() == 1 || stdev_values_.size() == input_channels) <<
+     "Specify either 1 stdev_value or as many as channels: " << input_channels;
+    if (stdev_values_.size() == 1) {
+      caffe_scal(input_blob->count(), Dtype(1./(stdev_values_[0])), input_data);
+    } else {
+      for (int n = 0; n < input_num; ++n) {
+        for (int c = 0; c < input_channels; ++c) {
+          int offset = input_blob->offset(n, c);
+          caffe_scal(input_height * input_width, Dtype(1./(stdev_values_[c])),
+            input_data + offset);
+        }
+      }
+    }
+  }
+
   Dtype* transformed_data = transformed_blob->mutable_cpu_data();
 
   for (int n = 0; n < input_num; ++n) {
@@ -422,11 +537,21 @@ void DataTransformer<Dtype>::Transform(Blob<Dtype>* input_blob,
         if (do_mirror) {
           int top_index_w = top_index_h + width - 1;
           for (int w = 0; w < width; ++w) {
-            transformed_data[top_index_w-w] = input_data[data_index_h + w];
+            if (h + h_off < 0 || h + h_off > input_height ||
+                w + w_off < 0 || w + w_off > input_width) {
+              transformed_data[top_index_w-w] = pad_value;
+            } else {
+              transformed_data[top_index_w-w] = input_data[data_index_h + w];
+            }
           }
         } else {
           for (int w = 0; w < width; ++w) {
-            transformed_data[top_index_h + w] = input_data[data_index_h + w];
+            if (h + h_off < 0 || h + h_off > input_height ||
+                w + w_off < 0 || w + w_off > input_width) {
+              transformed_data[top_index_h + w] = pad_value;
+            } else {
+              transformed_data[top_index_h + w] = input_data[data_index_h + w];
+            }
           }
         }
       }

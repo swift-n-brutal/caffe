@@ -7,12 +7,12 @@ EXAMPLE=examples/imagenet
 DATA=data/ilsvrc12
 TOOLS=build/tools
 
-TRAIN_DATA_ROOT=/path/to/imagenet/train/
-VAL_DATA_ROOT=/path/to/imagenet/val/
+TRAIN_DATA_ROOT=/data1/sw015/ILSVRC2012/train/
+VAL_DATA_ROOT=/data1/sw015/ILSVRC2012/val/
 
 # Set RESIZE=true to resize the images to 256x256. Leave as false if images have
 # already been resized using another tool.
-RESIZE=false
+RESIZE=true
 if $RESIZE; then
   RESIZE_HEIGHT=256
   RESIZE_WIDTH=256
@@ -45,14 +45,14 @@ GLOG_logtostderr=1 $TOOLS/convert_imageset \
     $DATA/train.txt \
     $EXAMPLE/ilsvrc12_train_lmdb
 
-echo "Creating val lmdb..."
+#echo "Creating val lmdb..."
 
-GLOG_logtostderr=1 $TOOLS/convert_imageset \
-    --resize_height=$RESIZE_HEIGHT \
-    --resize_width=$RESIZE_WIDTH \
-    --shuffle \
-    $VAL_DATA_ROOT \
-    $DATA/val.txt \
-    $EXAMPLE/ilsvrc12_val_lmdb
+#GLOG_logtostderr=1 $TOOLS/convert_imageset \
+#    --resize_height=$RESIZE_HEIGHT \
+#    --resize_width=$RESIZE_WIDTH \
+#    --shuffle \
+#    $VAL_DATA_ROOT \
+#    $DATA/val.txt \
+#    $EXAMPLE/ilsvrc12_val_lmdb
 
 echo "Done."
