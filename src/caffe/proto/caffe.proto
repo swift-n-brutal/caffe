@@ -441,6 +441,12 @@ message TransformationParameter {
   optional bool force_color = 6 [default = false];
   // Force the decoded image to have 1 color channels.
   optional bool force_gray = 7 [default = false];
+  // stdev_file and stdev_value cannot be specified at the same time
+  optional string stdev_file = 8;
+  repeated float stdev_value = 9;
+  // pad data with [pad] pad_value's
+  optional uint32 pad = 10 [default = 0];
+  optional float pad_value = 11 [default = 0.];
 }
 
 // Message that stores parameters shared by loss layers
@@ -1175,6 +1181,7 @@ message ScaleParameter {
   // may be more efficient).  Initialized with bias_filler (defaults to 0).
   optional bool bias_term = 4 [default = false];
   optional FillerParameter bias_filler = 5;
+  optional bool scale_term = 6 [default = true];
 }
 
 message SigmoidParameter {
